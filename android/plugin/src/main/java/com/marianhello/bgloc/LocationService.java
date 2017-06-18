@@ -174,8 +174,8 @@ public class LocationService extends Service {
         serviceHandler = new ServiceHandler(handlerThread.getLooper());
 
         dao = (DAOFactory.createLocationDAO(this));
-        syncAccount = AccountHelper.CreateSyncAccount(this,
-                AuthenticatorService.getAccount(getStringResource(Config.ACCOUNT_TYPE_RESOURCE)));
+        //syncAccount = AccountHelper.CreateSyncAccount(this,
+        //        AuthenticatorService.getAccount(getStringResource(Config.ACCOUNT_TYPE_RESOURCE)));
 
         registerReceiver(connectivityChangeReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
     }
@@ -327,6 +327,7 @@ public class LocationService extends Service {
         location.setBatchStartMillis(System.currentTimeMillis() + ONE_MINUTE); // prevent sync of not yet posted location
         persistLocation(location);
 
+        /*
         if (config.hasUrl() || config.hasSyncUrl()) {
             Long locationsCount = dao.locationsForSyncCount(System.currentTimeMillis());
             log.debug("Location to sync: {} threshold: {}", locationsCount, config.getSyncThreshold());
@@ -335,7 +336,8 @@ public class LocationService extends Service {
                 SyncService.sync(syncAccount, getStringResource(Config.CONTENT_AUTHORITY_RESOURCE));
             }
         }
-
+        */
+        
         if (hasConnectivity && config.hasUrl()) {
             postLocationAsync(location);
         }
