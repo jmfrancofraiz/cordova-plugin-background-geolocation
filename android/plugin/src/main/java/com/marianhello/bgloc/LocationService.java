@@ -174,6 +174,7 @@ public class LocationService extends Service {
         serviceHandler = new ServiceHandler(handlerThread.getLooper());
 
         dao = (DAOFactory.createLocationDAO(this));
+
         //syncAccount = AccountHelper.CreateSyncAccount(this,
         //        AuthenticatorService.getAccount(getStringResource(Config.ACCOUNT_TYPE_RESOURCE)));
 
