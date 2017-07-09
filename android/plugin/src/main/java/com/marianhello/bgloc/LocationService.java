@@ -458,7 +458,7 @@ public class LocationService extends Service {
             try {
                 responseCode = HttpPostService.postJSON(url, jsonLocations, config.getHttpHeaders());
             } catch (Exception e) {
-                hasConnectivity = isNetworkAvailable();
+                //hasConnectivity = isNetworkAvailable(); //cuando falla por timeout esto se pone a false y ya nunca se recupera
                 log.warn("Error while posting locations: {}", e.getMessage());
                 return false;
             }
