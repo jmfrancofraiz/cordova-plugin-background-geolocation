@@ -20,8 +20,6 @@ import android.content.IntentFilter;
 import android.database.SQLException;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
@@ -38,9 +36,6 @@ import com.marianhello.bgloc.data.BackgroundLocation;
 import com.marianhello.bgloc.data.ConfigurationDAO;
 import com.marianhello.bgloc.data.DAOFactory;
 import com.marianhello.bgloc.data.LocationDAO;
-import com.marianhello.bgloc.sync.AccountHelper;
-import com.marianhello.bgloc.sync.AuthenticatorService;
-import com.marianhello.bgloc.sync.SyncService;
 import com.marianhello.logging.LoggerManager;
 
 import org.json.JSONArray;
@@ -108,7 +103,6 @@ public class LocationService extends Service {
     private Config config;
     private LocationProvider provider;
     private Account syncAccount;
-    private Boolean hasConnectivity = true;
 
     private org.slf4j.Logger log;
 
@@ -175,10 +169,6 @@ public class LocationService extends Service {
 
         dao = (DAOFactory.createLocationDAO(this));
 
-        //syncAccount = AccountHelper.CreateSyncAccount(this,
-        //        AuthenticatorService.getAccount(getStringResource(Config.ACCOUNT_TYPE_RESOURCE)));
-
-        registerReceiver(connectivityChangeReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
     }
 
     @Override
@@ -190,7 +180,6 @@ public class LocationService extends Service {
         } else {
             handlerThread.quit(); //sorry
         }
-        unregisterReceiver(connectivityChangeReceiver);
         super.onDestroy();
     }
 
@@ -327,19 +316,8 @@ public class LocationService extends Service {
 
         location.setBatchStartMillis(System.currentTimeMillis() + ONE_MINUTE); // prevent sync of not yet posted location
         persistLocation(location);
-
-        /*
-        if (config.hasUrl() || config.hasSyncUrl()) {
-            Long locationsCount = dao.locationsForSyncCount(System.currentTimeMillis());
-            log.debug("Location to sync: {} threshold: {}", locationsCount, config.getSyncThreshold());
-            if (locationsCount >= config.getSyncThreshold()) {
-                log.debug("Attempt to sync locations: {} threshold: {}", locationsCount, config.getSyncThreshold());
-                SyncService.sync(syncAccount, getStringResource(Config.CONTENT_AUTHORITY_RESOURCE));
-            }
-        }
-        */
         
-        if (hasConnectivity && config.hasUrl()) {
+        if (config.hasUrl()) {
             postLocationAsync(location);
         }
 
@@ -458,7 +436,6 @@ public class LocationService extends Service {
             try {
                 responseCode = HttpPostService.postJSON(url, jsonLocations, config.getHttpHeaders());
             } catch (Exception e) {
-                //hasConnectivity = isNetworkAvailable(); //cuando falla por timeout esto se pone a false y ya nunca se recupera
                 log.warn("Error while posting locations: {}", e.getMessage());
                 return false;
             }
@@ -479,23 +456,4 @@ public class LocationService extends Service {
         }
     }
 
-    /**
-     * Broadcast receiver which detects connectivity change condition
-     */
-    private BroadcastReceiver connectivityChangeReceiver = new BroadcastReceiver() {
-        private static final String LOG_TAG = "NetworkChangeReceiver";
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            hasConnectivity = isNetworkAvailable();
-            log.info("Network condition changed hasConnectivity: {}", hasConnectivity);
-        }
-    };
-
-    private boolean isNetworkAvailable() {
-        ConnectivityManager cm =
-                (ConnectivityManager) this.getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-        return activeNetwork != null && activeNetwork.isConnectedOrConnecting();
-    }
 }
