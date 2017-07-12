@@ -38,6 +38,8 @@ public class ActivityRecognitionLocationProvider extends AbstractLocationProvide
     private Boolean isWatchingActivity = false;
     private DetectedActivity lastActivity = new DetectedActivity(DetectedActivity.UNKNOWN, 100);
 
+    private BroadcastReceiver detectedActivitiesReceiver = null;
+
     private org.slf4j.Logger log;
 
     public ActivityRecognitionLocationProvider(LocationService locationService) {
@@ -54,7 +56,35 @@ public class ActivityRecognitionLocationProvider extends AbstractLocationProvide
         if (config.getStopOnStillActivity()) {
             Intent detectedActivitiesIntent = new Intent(DETECTED_ACTIVITY_UPDATE);
             detectedActivitiesPI = PendingIntent.getBroadcast(locationService, 9002, detectedActivitiesIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+            detectedActivitiesReceiver = new BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context context, Intent intent) {
+                        ActivityRecognitionResult result = ActivityRecognitionResult.extractResult(intent);
+                        ArrayList<DetectedActivity> detectedActivities = (ArrayList) result.getProbableActivities();
+
+                        //Find the activity with the highest percentage
+                        lastActivity = getProbableActivity(detectedActivities);
+
+                        log.debug("Detected activity={} confidence={}", getActivityString(lastActivity.getType()), lastActivity.getConfidence());
+
+                        if (lastActivity.getType() == DetectedActivity.STILL) {
+                            if (config.isDebugging()) {
+                                Toast.makeText(context, "Detected STILL Activity", Toast.LENGTH_SHORT).show();
+                            }
+                            // stopTracking();
+                            // we will delay stop tracking after position is found
+                        } else {
+                            if (config.isDebugging()) {
+                                Toast.makeText(context, "Detected ACTIVE Activity", Toast.LENGTH_SHORT).show();
+                            }
+                            startTracking();
+                        }
+                        //else do nothing
+                    }
+            };            
             registerReceiver(detectedActivitiesReceiver, new IntentFilter(DETECTED_ACTIVITY_UPDATE));
+        } else {
+            detectedActivitiesReceiver = null;
         }
     }
 
@@ -251,38 +281,15 @@ public class ActivityRecognitionLocationProvider extends AbstractLocationProvide
           }
     }
 
-    private BroadcastReceiver detectedActivitiesReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            ActivityRecognitionResult result = ActivityRecognitionResult.extractResult(intent);
-            ArrayList<DetectedActivity> detectedActivities = (ArrayList) result.getProbableActivities();
-
-            //Find the activity with the highest percentage
-            lastActivity = getProbableActivity(detectedActivities);
-
-            log.debug("Detected activity={} confidence={}", getActivityString(lastActivity.getType()), lastActivity.getConfidence());
-
-            if (lastActivity.getType() == DetectedActivity.STILL) {
-                if (config.isDebugging()) {
-                    Toast.makeText(context, "Detected STILL Activity", Toast.LENGTH_SHORT).show();
-                }
-                // stopTracking();
-                // we will delay stop tracking after position is found
-            } else {
-                if (config.isDebugging()) {
-                    Toast.makeText(context, "Detected ACTIVE Activity", Toast.LENGTH_SHORT).show();
-                }
-                startTracking();
-            }
-            //else do nothing
-        }
-    };
+     = 
 
     public void onDestroy() {
         super.onDestroy();
         log.info("Destroying ActivityRecognitionLocationProvider");
         stopRecording();
         disconnectFromPlayAPI();
-        unregisterReceiver(detectedActivitiesReceiver);
+        if (detectedActivitiesReceiver != null) {
+            unregisterReceiver(detectedActivitiesReceiver);
+        }
     }
 }
