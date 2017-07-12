@@ -281,8 +281,6 @@ public class ActivityRecognitionLocationProvider extends AbstractLocationProvide
           }
     }
 
-     = 
-
     public void onDestroy() {
         super.onDestroy();
         log.info("Destroying ActivityRecognitionLocationProvider");
